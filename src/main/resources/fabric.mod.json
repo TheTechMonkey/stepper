@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "stepper",
+  "version": "${version}",
+  "name": "Stepper",
+  "description": "Adds a small two-step stair, 2/3 of a block tall, for every full solid block from vanilla and every other mod.",
+  "authors": [
+    "TechMonkey"
+  ],
+  "contributors": [
+    "Shape based on Small Stairs by pitan76 (MIT) and the original SmallStairs by Sayo"
+  ],
+  "contact": {
+    "sources": "https://github.com/TheTechMonkey/stepper"
+  },
+  "license": "MIT",
+  "icon": "assets/stepper/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.techmonkey.stepper.Stepper"
+    ],
+    "client": [
+      "com.techmonkey.stepper.client.StepperClient"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "stepper.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": "*",
+    "minecraft": "~26.3",
+    "java": ">=25"
+  }
+}

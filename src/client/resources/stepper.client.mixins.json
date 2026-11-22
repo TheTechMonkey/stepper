@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "com.techmonkey.stepper.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ClientItemInfoLoaderMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
