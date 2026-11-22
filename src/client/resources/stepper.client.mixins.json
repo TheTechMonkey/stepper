@@ -3,7 +3,9 @@
   "package": "com.techmonkey.stepper.client.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "ClientItemInfoLoaderMixin"
+    "ClientItemInfoLoaderMixin",
+    "ItemStackRenderStateAccessor",
+    "LayerRenderStateAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

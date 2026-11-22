@@ -73,11 +73,10 @@ public class StepperClient implements ClientModInitializer {
     }
 
     /**
-     * Called from {@code ClientItemInfoLoaderMixin} after item definitions are loaded. Each small
-     * stair item doesn't have an item definition file, so it borrows its base block's one.
-     *
-     * <p>Known limitation for 1.0.0: in inventories and in your hand the item looks like the
-     * full base block. Placed small stairs render with the real small stair shape.
+     * Called from {@code ClientItemInfoLoaderMixin} after item definitions are loaded. Small
+     * stair items don't have item definition files, so each one gets its base block's item
+     * definition wrapped in {@link SmallStairItemUnbakedModel}, which cuts the base item's
+     * faces down to the small stair shape.
      */
     public static ClientItemInfoLoader.LoadedClientInfos addSmallStairItems(ClientItemInfoLoader.LoadedClientInfos loaded) {
         Map<Identifier, ClientItem> contents = new HashMap<>(loaded.contents());
@@ -89,7 +88,7 @@ public class StepperClient implements ClientModInitializer {
             Identifier baseItemId = BuiltInRegistries.ITEM.getKey(entry.baseItem());
             ClientItem baseItem = contents.get(baseItemId);
             if (baseItem != null) {
-                contents.put(entry.id(), baseItem);
+                contents.put(entry.id(), new ClientItem(new SmallStairItemUnbakedModel(baseItem.model()), baseItem.properties(), baseItem.registrySwapper()));
                 added++;
             }
         }
