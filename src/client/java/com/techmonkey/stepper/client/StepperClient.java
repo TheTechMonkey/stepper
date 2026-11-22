@@ -86,7 +86,7 @@ public class StepperClient implements ClientModInitializer {
             if (contents.containsKey(entry.id())) {
                 continue; // A resource pack provides a real definition; use it.
             }
-            Identifier baseItemId = BuiltInRegistries.ITEM.getKey(entry.baseBlock().asItem());
+            Identifier baseItemId = BuiltInRegistries.ITEM.getKey(entry.baseItem());
             ClientItem baseItem = contents.get(baseItemId);
             if (baseItem != null) {
                 contents.put(entry.id(), baseItem);

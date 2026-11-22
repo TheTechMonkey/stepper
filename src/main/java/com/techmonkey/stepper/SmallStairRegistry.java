@@ -2,7 +2,9 @@ package com.techmonkey.stepper;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -10,8 +12,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -24,17 +26,18 @@ import net.fabricmc.fabric.api.event.registry.RegistryEntryAddedCallback;
 /**
  * Creates a small stair for every eligible block, from vanilla and from every other mod.
  *
- * <p>Uses Fabric's "all entries" registry hook, which visits blocks that already exist and
- * every block registered later, so load order doesn't matter. The server and every player
+ * <p>Uses Fabric's "all entries" registry hook on items, which visits block items that
+ * already exist and every one registered later, so load order doesn't matter. The server and every player
  * must have the same block mods (your PackWiz pack already guarantees that), because the
  * list of generated blocks has to match for registry sync.
  */
 public final class SmallStairRegistry {
-    public record Entry(Block baseBlock, Identifier baseId, SmallStairBlock block, SmallStairItem item, Identifier id) {
+    public record Entry(Block baseBlock, Identifier baseId, Item baseItem, SmallStairBlock block, SmallStairItem item, Identifier id) {
     }
 
     private static final List<Entry> ENTRIES = new ArrayList<>();
     private static final List<Entry> ENTRIES_VIEW = Collections.unmodifiableList(ENTRIES);
+    private static final Set<Block> REGISTERED_BASES = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private SmallStairRegistry() {
     }
@@ -44,12 +47,23 @@ public final class SmallStairRegistry {
         return ENTRIES_VIEW;
     }
 
+    /**
+     * Small stairs are created when a block's <em>item</em> is registered, not when the block
+     * is. Mods register a block first and its item a moment later; asking a block for its item
+     * before then makes Minecraft cache "no item" for that block permanently, which breaks the
+     * other mod (Mo' Glass crashed the creative menu that way in 1.0.0). Waiting for the
+     * BlockItem means we never ask too early, and we get the base item directly.
+     */
     static void init() {
-        RegistryEntryAddedCallback.allEntries(BuiltInRegistries.BLOCK, reference -> {
-            Block baseBlock = reference.value();
+        RegistryEntryAddedCallback.allEntries(BuiltInRegistries.ITEM, reference -> {
+            if (!(reference.value() instanceof BlockItem blockItem) || blockItem instanceof SmallStairItem) {
+                return;
+            }
+            Block baseBlock = blockItem.getBlock();
             Identifier baseId = BuiltInRegistries.BLOCK.getKey(baseBlock);
-            if (isEligible(baseId, baseBlock)) {
-                register(baseId, baseBlock);
+            if (!REGISTERED_BASES.contains(baseBlock) && isEligible(baseId, baseBlock)) {
+                REGISTERED_BASES.add(baseBlock);
+                register(baseId, baseBlock, blockItem);
             }
         });
     }
@@ -57,7 +71,9 @@ public final class SmallStairRegistry {
     /**
      * Plain, solid, full-cube blocks only. Skips our own blocks, air, blocks with block
      * entities (chests, machines), anything see-through or oddly shaped (glass, leaves,
-     * panes, plants), unbreakable blocks, and blocks with no item to craft from.
+     * panes, plants) and unbreakable blocks. Blocks without an item never get here.
+     *
+     * <p>Must not call {@code asItem()}: see {@link #init()}.
      */
     private static boolean isEligible(Identifier baseId, Block baseBlock) {
         if (baseId.getNamespace().equals(Stepper.MOD_ID)) {
@@ -74,10 +90,6 @@ public final class SmallStairRegistry {
         if (baseBlock.defaultDestroyTime() < 0) {
             return false;
         }
-        if (baseBlock.asItem() == Items.AIR) {
-            return false;
-        }
-
         try {
             return state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
         } catch (RuntimeException e) {
@@ -87,7 +99,7 @@ public final class SmallStairRegistry {
         }
     }
 
-    private static void register(Identifier baseId, Block baseBlock) {
+    private static void register(Identifier baseId, Block baseBlock, Item baseItem) {
         // stepper:<mod>/<block>, e.g. stepper:minecraft/stone
         Identifier id = Identifier.fromNamespaceAndPath(Stepper.MOD_ID, baseId.getNamespace() + "/" + baseId.getPath());
         ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, id);
@@ -98,7 +110,7 @@ public final class SmallStairRegistry {
         SmallStairItem item = Registry.register(BuiltInRegistries.ITEM, itemKey,
                 new SmallStairItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
 
-        ENTRIES.add(new Entry(baseBlock, baseId, block, item, id));
+        ENTRIES.add(new Entry(baseBlock, baseId, baseItem, block, item, id));
     }
 
     /**

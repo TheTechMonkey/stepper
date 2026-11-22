@@ -7,6 +7,8 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -36,6 +38,28 @@ public class Stepper implements ModInitializer {
         // Recipes are generated per block, so they're written as a world datapack once the
         // server (or singleplayer world) has started, then loaded with a resource reload.
         ServerLifecycleEvents.SERVER_STARTED.register(RecipePackWriter::writeAndEnable);
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> checkBlockItemLinks());
+    }
+
+    /**
+     * Safety check: every block that has a BlockItem should still report that item. If any
+     * don't, something asked for a block's item before it was registered (the 1.0.0 bug).
+     */
+    private static void checkBlockItemLinks() {
+        int broken = 0;
+        for (Item item : BuiltInRegistries.ITEM) {
+            if (item instanceof BlockItem blockItem && blockItem.getBlock().asItem() == Items.AIR) {
+                broken++;
+                if (broken <= 10) {
+                    LOGGER.warn("Block {} has item {} but reports no item", BuiltInRegistries.BLOCK.getKey(blockItem.getBlock()), BuiltInRegistries.ITEM.getKey(item));
+                }
+            }
+        }
+        if (broken > 0) {
+            LOGGER.warn("{} blocks report no item even though they have one", broken);
+        } else {
+            LOGGER.info("Stepper: {} small stairs, all block items intact", SmallStairRegistry.entries().size());
+        }
     }
 
     private static ItemStack tabIcon() {

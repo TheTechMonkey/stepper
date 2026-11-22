@@ -82,7 +82,7 @@ public final class RecipePackWriter {
         files.put("pack.mcmeta", GSON.toJson(packMeta()));
 
         for (SmallStairRegistry.Entry entry : SmallStairRegistry.entries()) {
-            Identifier baseItemId = BuiltInRegistries.ITEM.getKey(entry.baseBlock().asItem());
+            Identifier baseItemId = BuiltInRegistries.ITEM.getKey(entry.baseItem());
             String recipeFolder = "data/" + Stepper.MOD_ID + "/recipe/" + entry.baseId().getNamespace() + "/";
             files.put(recipeFolder + entry.baseId().getPath() + ".json",
                     GSON.toJson(craftingRecipe(baseItemId, entry.id())));
