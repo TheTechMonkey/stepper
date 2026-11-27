@@ -23,8 +23,8 @@ import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockColorRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockTintsFactory;
 
-import com.techmonkey.stepper.SmallStairBlock;
 import com.techmonkey.stepper.SmallStairRegistry;
+import com.techmonkey.stepper.StepperBlock;
 
 public class StepperClient implements ClientModInitializer {
     @Override
@@ -35,11 +35,13 @@ public class StepperClient implements ClientModInitializer {
         ModelLoadingPlugin.register(pluginContext -> {
             for (SmallStairRegistry.Entry entry : entries) {
                 SmallStairUnbakedModel model = new SmallStairUnbakedModel(entry.baseBlock());
-                pluginContext.registerBlockStateResolver(entry.block(), resolverContext -> {
-                    for (BlockState state : resolverContext.block().getStateDefinition().getPossibleStates()) {
-                        resolverContext.setModel(state, model);
-                    }
-                });
+                for (Block block : List.of(entry.block(), entry.verticalBlock())) {
+                    pluginContext.registerBlockStateResolver(block, resolverContext -> {
+                        for (BlockState state : resolverContext.block().getStateDefinition().getPossibleStates()) {
+                            resolverContext.setModel(state, model);
+                        }
+                    });
+                }
             }
         });
 
@@ -47,7 +49,9 @@ public class StepperClient implements ClientModInitializer {
         // as its base block at the same position. Registered once the client has started, so
         // small stairs for blocks from mods that load after Stepper are included too.
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
-            Block[] blocks = entries.stream().map(SmallStairRegistry.Entry::block).toArray(Block[]::new);
+            Block[] blocks = entries.stream()
+                    .flatMap(entry -> java.util.stream.Stream.of(entry.block(), entry.verticalBlock()))
+                    .toArray(Block[]::new);
             if (blocks.length > 0) {
                 BlockColorRegistry.register(StepperClient::collectBaseTints, blocks);
             }
@@ -55,10 +59,10 @@ public class StepperClient implements ClientModInitializer {
     }
 
     private static void collectBaseTints(BlockState state, BlockAndTintGetter level, BlockPos pos, IntList tintValues) {
-        if (!(state.getBlock() instanceof SmallStairBlock smallStair)) {
+        if (!(state.getBlock() instanceof StepperBlock stepperBlock)) {
             return;
         }
-        BlockState baseState = smallStair.getBaseBlock().defaultBlockState();
+        BlockState baseState = stepperBlock.getBaseBlock().defaultBlockState();
         List<BlockTintSource> sources = Minecraft.getInstance().getBlockColors().getTintSources(baseState);
         if (!sources.isEmpty()) {
             for (BlockTintSource source : sources) {
@@ -82,13 +86,17 @@ public class StepperClient implements ClientModInitializer {
         Map<Identifier, ClientItem> contents = new HashMap<>(loaded.contents());
         int added = 0;
         for (SmallStairRegistry.Entry entry : SmallStairRegistry.entries()) {
-            if (contents.containsKey(entry.id())) {
-                continue; // A resource pack provides a real definition; use it.
-            }
             Identifier baseItemId = BuiltInRegistries.ITEM.getKey(entry.baseItem());
             ClientItem baseItem = contents.get(baseItemId);
-            if (baseItem != null) {
-                contents.put(entry.id(), new ClientItem(new SmallStairItemUnbakedModel(baseItem.model()), baseItem.properties(), baseItem.registrySwapper()));
+            if (baseItem == null) {
+                continue;
+            }
+            for (boolean vertical : new boolean[] {false, true}) {
+                Identifier id = vertical ? entry.verticalId() : entry.id();
+                if (contents.containsKey(id)) {
+                    continue; // A resource pack provides a real definition; use it.
+                }
+                contents.put(id, new ClientItem(new SmallStairItemUnbakedModel(baseItem.model(), vertical), baseItem.properties(), baseItem.registrySwapper()));
                 added++;
             }
         }

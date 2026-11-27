@@ -31,6 +31,7 @@ public class Stepper implements ModInitializer {
                         .displayItems((context, output) -> {
                             for (SmallStairRegistry.Entry entry : SmallStairRegistry.entries()) {
                                 output.accept(entry.item());
+                                output.accept(entry.verticalItem());
                             }
                         })
                         .build());
@@ -58,7 +59,8 @@ public class Stepper implements ModInitializer {
         if (broken > 0) {
             LOGGER.warn("{} blocks report no item even though they have one", broken);
         } else {
-            LOGGER.info("Stepper: {} small stairs, all block items intact", SmallStairRegistry.entries().size());
+            LOGGER.info("Stepper: {} small stairs and {} vertical small stairs, all block items intact",
+                    SmallStairRegistry.entries().size(), SmallStairRegistry.entries().size());
         }
     }
 

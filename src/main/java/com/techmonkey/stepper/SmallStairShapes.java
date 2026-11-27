@@ -4,6 +4,8 @@ import java.util.EnumMap;
 import java.util.Map;
 
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -25,6 +27,8 @@ public final class SmallStairShapes {
 
     private static final Map<Direction, Map<Half, Map<StairsShape, boolean[][][]>>> VOXELS = new EnumMap<>(Direction.class);
     private static final Map<Direction, Map<Half, Map<StairsShape, VoxelShape>>> SHAPES = new EnumMap<>(Direction.class);
+    private static final Map<Direction, boolean[][][]> VERTICAL_VOXELS = new EnumMap<>(Direction.class);
+    private static final Map<Direction, VoxelShape> VERTICAL_SHAPES = new EnumMap<>(Direction.class);
 
     static {
         for (Direction facing : Direction.Plane.HORIZONTAL) {
@@ -43,6 +47,10 @@ public final class SmallStairShapes {
             }
             VOXELS.put(facing, voxelsByHalf);
             SHAPES.put(facing, shapesByHalf);
+
+            boolean[][][] verticalVoxels = buildVerticalVoxels(facing);
+            VERTICAL_VOXELS.put(facing, verticalVoxels);
+            VERTICAL_SHAPES.put(facing, buildShape(verticalVoxels));
         }
     }
 
@@ -56,6 +64,42 @@ public final class SmallStairShapes {
 
     public static VoxelShape shape(Direction facing, Half half, StairsShape stairsShape) {
         return SHAPES.get(facing).get(half).get(stairsShape);
+    }
+
+    /** Occupied thirds of a vertical small stair, indexed [x][y][z]. Shared array: do not modify. */
+    public static boolean[][][] verticalVoxels(Direction facing) {
+        return VERTICAL_VOXELS.get(facing);
+    }
+
+    public static VoxelShape verticalShape(Direction facing) {
+        return VERTICAL_SHAPES.get(facing);
+    }
+
+    /** Occupied thirds for any small stair or vertical small stair state. */
+    public static boolean[][][] voxels(BlockState state) {
+        if (state.getBlock() instanceof VerticalSmallStairBlock) {
+            return verticalVoxels(state.getValue(VerticalSmallStairBlock.FACING));
+        }
+        return voxels(state.getValue(StairBlock.FACING), state.getValue(StairBlock.HALF), state.getValue(StairBlock.SHAPE));
+    }
+
+    /**
+     * The small stair's side profile (two steps, 2/3 and 1/3 deep) laid flat and stood up full
+     * height: in the corner between FACING and FACING clockwise, a third is filled when its
+     * distances from the two walls add up to 1 or less.
+     */
+    private static boolean[][][] buildVerticalVoxels(Direction facing) {
+        boolean[][][] voxels = new boolean[GRID][GRID][GRID];
+        for (int x = 0; x < GRID; x++) {
+            for (int z = 0; z < GRID; z++) {
+                if (depthFromBack(facing, x, z) + depthFromBack(facing.getClockWise(), x, z) <= 1) {
+                    for (int y = 0; y < GRID; y++) {
+                        voxels[x][y][z] = true;
+                    }
+                }
+            }
+        }
+        return voxels;
     }
 
     private static boolean[][][] buildVoxels(Direction facing, Half half, StairsShape stairsShape) {

@@ -3,7 +3,7 @@
   "id": "stepper",
   "version": "${version}",
   "name": "Stepper",
-  "description": "Adds a small two-step stair, 2/3 of a block tall, for every full solid block from vanilla and every other mod.",
+  "description": "Adds a small two-step stair, 2/3 of a block tall, and a vertical version standing in a corner, for every full solid block from vanilla and every other mod.",
   "authors": [
     "TechMonkey"
   ],

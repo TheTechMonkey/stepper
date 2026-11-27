@@ -24,7 +24,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.fabricmc.fabric.api.event.registry.RegistryEntryAddedCallback;
 
 /**
- * Creates a small stair for every eligible block, from vanilla and from every other mod.
+ * Creates a small stair and a vertical small stair for every eligible block, from vanilla
+ * and from every other mod.
  *
  * <p>Uses Fabric's "all entries" registry hook on items, which visits block items that
  * already exist and every one registered later, so load order doesn't matter. The server and every player
@@ -32,7 +33,9 @@ import net.fabricmc.fabric.api.event.registry.RegistryEntryAddedCallback;
  * list of generated blocks has to match for registry sync.
  */
 public final class SmallStairRegistry {
-    public record Entry(Block baseBlock, Identifier baseId, Item baseItem, SmallStairBlock block, SmallStairItem item, Identifier id) {
+    public record Entry(Block baseBlock, Identifier baseId, Item baseItem,
+            SmallStairBlock block, SmallStairItem item, Identifier id,
+            VerticalSmallStairBlock verticalBlock, SmallStairItem verticalItem, Identifier verticalId) {
     }
 
     private static final List<Entry> ENTRIES = new ArrayList<>();
@@ -110,7 +113,17 @@ public final class SmallStairRegistry {
         SmallStairItem item = Registry.register(BuiltInRegistries.ITEM, itemKey,
                 new SmallStairItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
 
-        ENTRIES.add(new Entry(baseBlock, baseId, baseItem, block, item, id));
+        // stepper:vertical/<mod>/<block>, e.g. stepper:vertical/minecraft/stone
+        Identifier verticalId = Identifier.fromNamespaceAndPath(Stepper.MOD_ID, "vertical/" + baseId.getNamespace() + "/" + baseId.getPath());
+        ResourceKey<Block> verticalBlockKey = ResourceKey.create(Registries.BLOCK, verticalId);
+        ResourceKey<Item> verticalItemKey = ResourceKey.create(Registries.ITEM, verticalId);
+
+        VerticalSmallStairBlock verticalBlock = Registry.register(BuiltInRegistries.BLOCK, verticalBlockKey,
+                new VerticalSmallStairBlock(baseBlock, copyProperties(baseBlock).setId(verticalBlockKey)));
+        SmallStairItem verticalItem = Registry.register(BuiltInRegistries.ITEM, verticalItemKey,
+                new SmallStairItem(verticalBlock, new Item.Properties().setId(verticalItemKey).useBlockDescriptionPrefix()));
+
+        ENTRIES.add(new Entry(baseBlock, baseId, baseItem, block, item, id, verticalBlock, verticalItem, verticalId));
     }
 
     /**

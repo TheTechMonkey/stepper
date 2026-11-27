@@ -32,6 +32,8 @@ import net.minecraft.world.level.storage.LevelResource;
  *   <li>Crafting: three base blocks in an L (" #" over "##") make 6 small stairs, the same
  *       recipe as pitan76's Small Stairs.</li>
  *   <li>Stonecutter: one base block makes 2 small stairs.</li>
+ *   <li>Crafting: one small stair makes one vertical small stair, and back.</li>
+ *   <li>Stonecutter: one base block makes 2 vertical small stairs.</li>
  * </ul>
  *
  * <p>The pack is only rewritten (and the server only reloads) when the list of small stairs
@@ -69,7 +71,7 @@ public final class RecipePackWriter {
         }
 
         Collection<String> selected = new ArrayList<>(packs.getSelectedIds());
-        Stepper.LOGGER.info("Loading Stepper recipes for {} small stairs", SmallStairRegistry.entries().size());
+        Stepper.LOGGER.info("Loading Stepper recipes for {} small stairs and their vertical versions", SmallStairRegistry.entries().size());
         server.reloadResources(selected).exceptionally(throwable -> {
             Stepper.LOGGER.error("Reloading data for the Stepper recipes failed", throwable);
             return null;
@@ -88,6 +90,12 @@ public final class RecipePackWriter {
                     GSON.toJson(craftingRecipe(baseItemId, entry.id())));
             files.put(recipeFolder + entry.baseId().getPath() + "_stonecutting.json",
                     GSON.toJson(stonecuttingRecipe(baseItemId, entry.id())));
+            files.put(recipeFolder + entry.baseId().getPath() + "_vertical.json",
+                    GSON.toJson(shapelessRecipe(entry.id(), entry.verticalId())));
+            files.put(recipeFolder + entry.baseId().getPath() + "_from_vertical.json",
+                    GSON.toJson(shapelessRecipe(entry.verticalId(), entry.id())));
+            files.put(recipeFolder + entry.baseId().getPath() + "_vertical_stonecutting.json",
+                    GSON.toJson(stonecuttingRecipe(baseItemId, entry.verticalId())));
         }
         return files;
     }
@@ -115,6 +123,18 @@ public final class RecipePackWriter {
         key.addProperty("#", baseItemId.toString());
         recipe.add("key", key);
         recipe.add("result", result(resultId, 6));
+        return recipe;
+    }
+
+    /** One of {@code ingredientId} makes one of {@code resultId}. */
+    private static JsonObject shapelessRecipe(Identifier ingredientId, Identifier resultId) {
+        JsonObject recipe = new JsonObject();
+        recipe.addProperty("type", "minecraft:crafting_shapeless");
+        recipe.addProperty("category", "building");
+        JsonArray ingredients = new JsonArray();
+        ingredients.add(ingredientId.toString());
+        recipe.add("ingredients", ingredients);
+        recipe.add("result", result(resultId, 1));
         return recipe;
     }
 
